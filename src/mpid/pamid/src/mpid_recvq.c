@@ -26,6 +26,7 @@
 
 #include <mpidimpl.h>
 #include "mpid_recvq.h"
+#include "mpit.h"
 
 /**
  * \defgroup MPID_RECVQ MPID Receive Queue management
@@ -59,6 +60,26 @@ MPIDI_Recvq_init()
   if(MPIDI_Process.queue_binary_search_support_on)
     MPIDI_Recvq_init_queues();
 #endif
+  MPIR_T_PVAR_LEVEL_REGISTER_STATIC(
+      RECVQ,
+      MPI_UNSIGNED,
+      unexpected_recvq_length,
+      0, /* init value */
+      MPI_T_VERBOSITY_USER_DETAIL,
+      MPI_T_BIND_NO_OBJECT,
+      (MPIR_T_PVAR_FLAG_READONLY | MPIR_T_PVAR_FLAG_CONTINUOUS),
+      "PAMID", /* category name */
+      "length of the unexpected message receive queue");
+  MPIR_T_PVAR_LEVEL_REGISTER_STATIC(
+      RECVQ,
+      MPI_UNSIGNED,
+      posted_recvq_length,
+      0, /* init value */
+      MPI_T_VERBOSITY_USER_DETAIL,
+      MPI_T_BIND_NO_OBJECT,
+      (MPIR_T_PVAR_FLAG_READONLY | MPIR_T_PVAR_FLAG_CONTINUOUS),
+      "PAMID", /* category name */
+      "length of the posted message receive queue");
 }
 
 
@@ -377,13 +398,19 @@ MPIDI_Recvq_FDUR(MPI_Request req, int source, int tag, int context_id)
   {
 #ifndef OUT_OF_ORDER_HANDLING
     MPIDI_Recvq_remove_uexp(source, tag, context_id, it);
+    MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
 #else
     MPIDI_Recvq_remove_uexp(source, tag, context_id, MPIDI_Request_getMatchSeq(cur_rreq),it);
+    MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
 #endif
   }
-  else
+  else {
 #endif
     MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, matching_cur_rreq, matching_prev_rreq);
+    MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
+#ifdef QUEUE_BINARY_SEARCH_SUPPORT
+  }
+#endif
 
  fn_exit:
 #ifdef USE_STATISTICS
@@ -447,8 +474,10 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
             MPIDI_Recvq_remove_req_from_ool(rreq,in_cntr);
           }
           MPIDI_Recvq_remove_uexp(source, tag, context_id, MPIDI_Request_getMatchSeq(rreq),it);
+          MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
 #else
           MPIDI_Recvq_remove_uexp(source, tag, context_id, it);
+          MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
 #endif
           found = TRUE;
 #ifdef MPIDI_TRACE
@@ -482,6 +511,7 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
               }
 #endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
+            MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
             found = TRUE;
             TRACE_SET_R_BIT((rreq->mpid.partner_id),(rreq->mpid.idx),fl.f.matchedInUQ2);
             goto fn_exit;
@@ -548,8 +578,10 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
               MPIDI_Recvq_remove_req_from_ool(rreq,in_cntr);
             }
             MPIDI_Recvq_remove_uexp(MPIDI_Request_getMatchRank(rreq), MPIDI_Request_getMatchTag(rreq), match.context_id, MPIDI_Request_getMatchSeq(rreq),it);
+            MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
 #else /* OUT_OF_ORDER_HANDLING */
             MPIDI_Recvq_remove_uexp(MPIDI_Request_getMatchRank(rreq), MPIDI_Request_getMatchTag(rreq), match.context_id, it);
+            MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
 #endif/* OUT_OF_ORDER_HANDLING */
             found = TRUE;
             goto fn_exit;
@@ -564,6 +596,7 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
               MPIDI_Recvq_remove_req_from_ool(rreq,in_cntr);
             }
             MPIDI_Recvq_remove_uexp(MPIDI_Request_getMatchRank(rreq), MPIDI_Request_getMatchTag(rreq), match.context_id, MPIDI_Request_getMatchSeq(rreq),it);
+            MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
           }
 #endif /* OUT_OF_ORDER_HANDLING */
 
@@ -600,6 +633,7 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
               }
 #endif
               MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
+              MPIR_T_PVAR_LEVEL_DEC(RECVQ, unexpected_recvq_length, 1);
               found = TRUE;
               goto fn_exit;
             }
@@ -649,6 +683,7 @@ MPIDI_Recvq_FDPR(MPID_Request * req)
       if (cur_rreq == req)
       {
         MPIDI_Recvq_remove_post(MPIDI_Request_getMatchRank(req), MPIDI_Request_getMatchTag(req), MPIDI_Request_getMatchCtxt(req),it);
+        MPIR_T_PVAR_LEVEL_DEC(RECVQ, posted_recvq_length, 1);
         found = TRUE;
       }
     }
@@ -665,6 +700,7 @@ MPIDI_Recvq_FDPR(MPID_Request * req)
       if (cur_rreq == req)
       {
         MPIDI_Recvq_remove(MPIDI_Recvq.posted, cur_rreq, prev_rreq);
+        MPIR_T_PVAR_LEVEL_DEC(RECVQ, posted_recvq_length, 1);
         found = TRUE;
         break;
       }
@@ -750,11 +786,17 @@ MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int t
 #ifndef OUT_OF_ORDER_HANDLING
   MPIDI_Request_setMatch(rreq, tag, source, context_id);
 #ifdef QUEUE_BINARY_SEARCH_SUPPORT
-  if(MPIDI_Process.queue_binary_search_support_on)
+  if(MPIDI_Process.queue_binary_search_support_on) {
     MPIDI_Recvq_insert_uexp((void*)rreq, source, tag, context_id);
-  else
+    MPIR_T_PVAR_LEVEL_INC(RECVQ, unexpected_recvq_length, 1);
+  } else {
 #endif
     MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+    MPIR_T_PVAR_LEVEL_INC(RECVQ, unexpected_recvq_length, 1);
+#ifdef QUEUE_BINARY_SEARCH_SUPPORT
+  }
+#endif
+
 #else /* OUT_OF_ORDER_HANDLING */
   MPID_Request *q;
   MPIDI_In_cntr_t *in_cntr;
@@ -769,12 +811,14 @@ MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int t
   if(MPIDI_Process.queue_binary_search_support_on)
   { 
     MPIDI_Recvq_insert_uexp((void*)rreq, source, tag, context_id, msg_seqno);
+    MPIR_T_PVAR_LEVEL_INC(RECVQ, unexpected_recvq_length, 1);
   }
   else
   {
 #endif
     if (!in_cntr->n_OutOfOrderMsgs) {
       MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+      MPIR_T_PVAR_LEVEL_INC(RECVQ, unexpected_recvq_length, 1);
     } else {
       q=in_cntr->OutOfOrderList;
       insert=0;
@@ -782,6 +826,7 @@ MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int t
         if ( context_id == MPIDI_Request_getMatchCtxt(q)) {
           if (((int)(msg_seqno - MPIDI_Request_getMatchSeq(q))) < 0) {
              MPIDI_Recvq_insert(MPIDI_Recvq.unexpected, q, rreq);
+             MPIR_T_PVAR_LEVEL_INC(RECVQ, unexpected_recvq_length, 1);
              insert=1;
              break;
           }
@@ -790,6 +835,7 @@ MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int t
       }
       if (!insert) {
         MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+        MPIR_T_PVAR_LEVEL_INC(RECVQ, unexpected_recvq_length, 1);
       }
     }
    TRACE_SET_R_VAL(pami_source,(msg_seqno & SEQMASK),req,rreq);

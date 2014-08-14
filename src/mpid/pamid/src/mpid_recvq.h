@@ -32,6 +32,8 @@ struct MPIDI_Recvq_t
 };
 extern struct MPIDI_Recvq_t MPIDI_Recvq;
 
+MPIR_T_PVAR_UINT_LEVEL_DECL_STATIC(RECVQ, unexpected_recvq_length);
+MPIR_T_PVAR_UINT_LEVEL_DECL_STATIC(RECVQ, posted_recvq_length);
 
 #ifndef OUT_OF_ORDER_HANDLING
 #define MPIDI_Recvq_append(__Q, __req)                  \
@@ -212,11 +214,15 @@ MPIDI_Recvq_FDU_or_AEP(MPID_Request *newreq, int source, pami_task_t pami_source
   rreq->kind = MPID_REQUEST_RECV;
   MPIDI_Request_setMatch(rreq, tag, source, context_id);
 #ifdef QUEUE_BINARY_SEARCH_SUPPORT
-  if(MPIDI_Process.queue_binary_search_support_on)
+  if(MPIDI_Process.queue_binary_search_support_on) {
     MPIDI_Recvq_insert_post(rreq, source, tag, context_id);
-  else
+    MPIR_T_PVAR_LEVEL_INC(RECVQ, posted_recvq_length, 1);
+  } else
 #endif
+  {
     MPIDI_Recvq_append(MPIDI_Recvq.posted, rreq);
+    MPIR_T_PVAR_LEVEL_INC(RECVQ, posted_recvq_length, 1);
+  }
   *foundp = FALSE;
 
   return rreq;
@@ -352,11 +358,15 @@ MPIDI_Recvq_FDP(size_t source, pami_task_t pami_source, int tag, int context_id,
         MPIDI_Request_setPeerRank_pami(rreq, pami_source);
 #endif
 #ifdef QUEUE_BINARY_SEARCH_SUPPORT
-        if(MPIDI_Process.queue_binary_search_support_on)
+        if(MPIDI_Process.queue_binary_search_support_on) {
           MPIDI_Recvq_remove_post(match_src, match_tag, match_ctx, it);
-        else
+          MPIR_T_PVAR_LEVEL_DEC(RECVQ, posted_recvq_length, 1);
+        } else
 #endif
+        {
           MPIDI_Recvq_remove(MPIDI_Recvq.posted, rreq, prev_rreq);
+          MPIR_T_PVAR_LEVEL_DEC(RECVQ, posted_recvq_length, 1);
+        }
 #ifdef USE_STATISTICS
         MPIDI_Statistics_time(MPIDI_Statistics.recvq.unexpected_search, search_length);
 #endif
