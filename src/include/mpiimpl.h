@@ -2875,7 +2875,7 @@ int MPID_Send( const void *buf, MPI_Aint count, MPI_Datatype datatype,
   Communication
 
   @*/
-int MPID_Rsend( const void *buf, int count, MPI_Datatype datatype,
+int MPID_Rsend( const void *buf, MPI_Aint count, MPI_Datatype datatype,
 		int dest, int tag, MPID_Comm *comm, int context_offset,
 		MPID_Request **request );
 
@@ -2974,7 +2974,7 @@ int MPID_Isend( const void *buf, MPI_Aint count, MPI_Datatype datatype,
   Communication
 
   @*/
-int MPID_Irsend( const void *buf, int count, MPI_Datatype datatype,
+int MPID_Irsend( const void *buf, MPI_Aint count, MPI_Datatype datatype,
 		 int dest, int tag, MPID_Comm *comm, int context_offset,
 		 MPID_Request **request );
 
