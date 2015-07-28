@@ -38,7 +38,7 @@
  * \returns An MPI Error code
  */
 int MPID_Recv(void          * buf,
-              int             count,
+              MPI_Aint        count,
               MPI_Datatype    datatype,
               int             rank,
               int             tag,

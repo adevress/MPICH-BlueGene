@@ -37,7 +37,7 @@
  * \returns An MPI Error code
  */
 int MPID_Ssend(const void    * buf,
-               int             count,
+               MPI_Aint        count,
                MPI_Datatype    datatype,
                int             rank,
                int             tag,
