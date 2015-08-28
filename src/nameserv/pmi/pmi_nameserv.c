@@ -48,6 +48,7 @@ int MPID_NS_Publish( MPID_NS_Handle handle, const MPID_Info *info_ptr,
     MPIU_THREADPRIV_DECL;
     MPIU_UNREFERENCED_ARG(info_ptr);
     MPIU_UNREFERENCED_ARG(handle);
+#if 0
 
 #ifdef USE_PMI2_API
     /* release the global CS for PMI calls */
@@ -58,6 +59,7 @@ int MPID_NS_Publish( MPID_NS_Handle handle, const MPID_Info *info_ptr,
     rc = PMI_Publish_name( service_name, port );
 #endif
     MPIU_ERR_CHKANDJUMP1(rc, mpi_errno, MPI_ERR_NAME, "**namepubnotpub", "**namepubnotpub %s", service_name);
+#endif
 
 fn_fail:
     return mpi_errno;
@@ -76,6 +78,7 @@ int MPID_NS_Lookup( MPID_NS_Handle handle, const MPID_Info *info_ptr,
     MPIU_UNREFERENCED_ARG(info_ptr);
     MPIU_UNREFERENCED_ARG(handle);
 
+#if 0
 #ifdef USE_PMI2_API
     /* release the global CS for PMI calls */
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
@@ -85,6 +88,7 @@ int MPID_NS_Lookup( MPID_NS_Handle handle, const MPID_Info *info_ptr,
     rc = PMI_Lookup_name( service_name, port );
 #endif
     MPIU_ERR_CHKANDJUMP1(rc, mpi_errno, MPI_ERR_NAME, "**namepubnotfound", "**namepubnotfound %s", service_name);
+#endif
 
 fn_fail:
     return mpi_errno;
@@ -103,6 +107,7 @@ int MPID_NS_Unpublish( MPID_NS_Handle handle, const MPID_Info *info_ptr,
     MPIU_UNREFERENCED_ARG(info_ptr);
     MPIU_UNREFERENCED_ARG(handle);
 
+#if 0
 #ifdef USE_PMI2_API
     /* release the global CS for PMI calls */
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
@@ -112,6 +117,7 @@ int MPID_NS_Unpublish( MPID_NS_Handle handle, const MPID_Info *info_ptr,
     rc = PMI_Unpublish_name( service_name );
 #endif
     MPIU_ERR_CHKANDJUMP1(rc, mpi_errno, MPI_ERR_SERVICE, "**namepubnotunpub", "**namepubnotunpub %s", service_name);
+#endif
 
 fn_fail:
     return mpi_errno;
